@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Papeleta Electoral - Honduras 2025</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<style>
+body { font-family: 'Segoe UI', sans-serif; margin:0; background: linear-gradient(to right, #1a202c, #2d3748); color:#edf2f7; }
+.container { max-width:1200px; margin:auto; padding:20px; }
+.header { display:flex; justify-content:space-between; align-items:center; padding:10px 20px; background:#2b6cb0; border-radius:10px; }
+.header h1 { margin:0; font-size:1.5rem; display:inline-block; margin-left:10px; }
+.btn { padding:0.5rem 1rem; border:none; border-radius:6px; cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:0.5rem; }
+.btn-primary { background:#2b6cb0; color:#fff; }
+.btn-secondary { background:#718096; color:#fff; }
+.btn-logout { background:#e53e3e; color:#fff; }
+.voting-container { margin-top:30px; }
+.voting-section { margin-bottom:30px; }
+.candidates-grid { display:flex; gap:15px; flex-wrap:wrap; }
+.candidate-card { background:#1a202c; padding:15px; border-radius:10px; flex:1 1 150px; text-align:center; box-shadow:0 4px 10px rgba(0,0,0,0.3); cursor:pointer; transition: transform 0.2s; color:#fff;}
+.candidate-card:hover { transform: scale(1.05); }
+.candidate-card.selected { border:3px solid #e53e3e; }
+.candidate-card img { width:100%; height:350px; object-fit:cover; border-radius:8px; margin-bottom:10px; }
+.submit-section { text-align:center; margin-top:20px; }
+.vote-summary { background:#2d3748; padding:15px; border-radius:10px; margin-bottom:15px; }
+svg { 
+  width:90%; 
+  height:500px; 
+  border:2px solid #e2e8f0; 
+  border-radius:8px; 
+  background:#f0f4f8; 
+  margin-bottom:20px; 
+  display:block;
+  margin-left:auto;
+  margin-right:auto;
+}
+.departamento { 
+  fill:#90cdf4; 
+  stroke:#2b6cb0; 
+  stroke-width:2; 
+  cursor:pointer; 
+  transition: fill 0.3s, transform 0.2s; 
+}
+.departamento:hover { 
+  fill:#2b6cb0; 
+  transform: scale(1.1); 
+}
+.departamento.seleccionado { 
+  fill:#e53e3e; 
+  stroke:#fff; 
+  stroke-width:3; 
+}
+.departamento-text { 
+  font-size:14px; 
+  fill:#1a202c; 
+  font-weight:bold; 
+  pointer-events:none; 
+  text-anchor:middle; 
+}
+.modal { display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.6); }
+.modal-content { background:#2d3748; margin:10% auto; padding:20px; border-radius:10px; width:90%; max-width:400px; color:#fff; text-align:center;}
+.modal-content button { margin-top:10px; }
+.close { float:right; cursor:pointer; font-size:20px; font-weight:bold; }
+</style>
+</head>
+<body>
+<div class="container">
+<header class="header">
+<div class="logo"><i class="fas fa-vote-yea"></i><h1>Papeleta Electoral Honduras 2025</h1></div>
+<div class="user-info">
+<span id="userInfo">Votante autenticado</span>
+<button onclick="logout()" class="btn btn-logout"><i class="fas fa-sign-out-alt"></i> Salir</button>
+</div>
+</header>
+
+<div class="voting-container">
+
+<!-- Selector de departamento con mapa -->
+<div class="voting-section">
+<h2><i class="fas fa-map-marker-alt"></i> Selecciona tu departamento</h2>
+<svg id="mapaHonduras" viewBox="0 0 1000 1200"></svg>
+<select id="departmentSelect">
+<option value="">-- Selecciona tu departamento --</option>
+</select>
+</div>
+
+<!-- Votación Presidencial -->
+<div class="voting-section">
+<h2><i class="fas fa-crown"></i> Presidente y Vicepresidente</h2>
+<div class="candidates-grid" id="presidentialCandidates"></div>
+</div>
+
+<!-- Votación Diputados -->
+<div class="voting-section">
+<h2><i class="fas fa-users"></i> Diputados al Congreso Nacional</h2>
+<div class="candidates-grid" id="congressCandidates"></div>
+</div>
+
+<!-- Votación Alcaldes -->
+<div class="voting-section">
+<h2><i class="fas fa-city"></i> Alcalde Municipal</h2>
+<div class="candidates-grid" id="mayorCandidates"></div>
+</div>
+
+<!-- Resumen y envío -->
+<div class="submit-section">
+<div class="vote-summary" id="voteSummary">
+<h3>Resumen de tu voto:</h3>
+<div id="summaryContent"></div>
+</div>
+<button id="submitVote" class="btn btn-primary" onclick="submitVote()" disabled>
+<i class="fas fa-paper-plane"></i> Enviar Voto
+</button>
+</div>
+
+</div>
+
+<!-- Modal resultados -->
+<div id="resultModal" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal('resultModal')">&times;</span>
+<h3>¡Voto registrado con éxito!</h3>
+<p>¿Deseas ver los resultados?</p>
+<button onclick="verResultados()" class="btn btn-primary"><i class="fas fa-chart-bar"></i> Ver Resultados</button>
+<button onclick="closeModal('resultModal')" class="btn btn-secondary">Cerrar</button>
+</div>
+</div>
+
+<script>
+// Datos
+const departamentos = [
+{nombre:"Francisco Morazán", coords:"500,850"},
+{nombre:"Cortés", coords:"200,180"},
+{nombre:"Atlántida", coords:"350,130"},
+{nombre:"Colón", coords:"500,80"},
+{nombre:"Olancho", coords:"650,280"},
+{nombre:"Santa Bárbara", coords:"150,450"},
+{nombre:"Yoro", coords:"350,220"},
+{nombre:"Gracias a Dios", coords:"850,450"},
+{nombre:"Comayagua", coords:"450,580"},
+{nombre:"Intibucá", coords:"300,650"},
+{nombre:"La Paz", coords:"400,600"},
+{nombre:"Lempira", coords:"200,650"},
+{nombre:"Ocotepeque", coords:"100,720"},
+{nombre:"Choluteca", coords:"550,1000"},
+{nombre:"Islas de la Bahía", coords:"850,80"},
+{nombre:"Valle", coords:"650,980"}
+];
+
+const presidentes = [
+{nombre:"Xiomara Castro", partido:"LIBRE", color:"#e53e3e", img:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQot73i1BQDZaSofmnE6oDgb30UgTY_-C7DKg&s"},
+{nombre:"Salvador Nasralla", partido:"PNH", color:"#3182ce", img:"https://pbs.twimg.com/profile_images/1876895679181713408/cf6uhHrH_400x400.jpg"},
+{nombre:"Nasry Asfura", partido:"PNH", color:"#3182ce", img:"https://scontent.fsap16-1.fna.fbcdn.net/v/t39.30808-6/479491732_1156567749588580_2699379370625376661_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=6ee11a&_nc_eui2=AeFll3o6wFwV408x_OfW3ZQudQJscVix9pJ1AmxxWLH2kio1K1Bi6Q7dmvboAFMaTI1vveYwjljG3sCg9lI4I8fM&_nc_ohc=fI-Al8__nPEQ7kNvwEMlqrV&_nc_oc=AdmJIMLZYyxtf7Isy7n3lWPSmS7tuWy6d_mJxFL8aebLoGMeprDcqOKOklMwJL9NyrU&_nc_zt=23&_nc_ht=scontent.fsap16-1.fna&_nc_gid=-CrtNDOWAmVqsFZm2mEq1g&oh=00_AfaW2hv0QG3AmL4SiVtrU6RV-n9BW1BreeFs1rQHi87zXw&oe=68D101AC"}
+];
+
+const diputados = [
+{nombre:"Rixi Moncada", partido:"LIBRE", color:"#e53e3e", img:"https://upload.wikimedia.org/wikipedia/commons/b/bc/Rixi_Moncada-Foto.jpg"},
+{nombre:"Gladys Aurora López", partido:"LIBRE", color:"#e53e3e", img:"https://contracorriente.red/wp-content/uploads/2017/11/photo4970133337888892890-e1511989164736.jpg"},
+{nombre:"Samuel Reyes", partido:"PNH", color:"#3182ce", img:"https://pbs.twimg.com/profile_images/991340159915450368/O3955hEU_400x400.jpg"},
+{nombre:"María Fernanda Flores", partido:"PNH", color:"#3182ce", img:"https://www.despacho505.com/media/news/3748-544-DOM-ENTREVISTA-4.jpg"}
+];
+
+const alcaldes = [
+{nombre:"Luis Redondo", partido:"LIBRE", color:"#e53e3e", img:"https://scontent.fsap16-1.fna.fbcdn.net/v/t39.30808-6/473187335_1167207981440697_168111844572696107_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=6ee11a&_nc_eui2=AeFCe3Z7UEI3rZ3qFaQrNIJRDNtnxc2b-ucM22fFzZv65zOca53pUladufyopRzg2bDkQnzTz9Z4LiEwwKRRdMGL&_nc_ohc=JxqrFmwBLrEQ7kNvwGuNIKw&_nc_oc=Adk4mLXKhrbZ3Zq25g7YAkoZeD4M2WptJhWpS4W46YzF6L5r_vCwCt6IMPjVC3c1lbo&_nc_zt=23&_nc_ht=scontent.fsap16-1.fna&_nc_gid=hwdYPChShSmQlVafFUoweA&oh=00_AfY_IYFYgujzeahZMe0zB7boP9YTj4QPtHi_n9_TsGcz9Q&oe=68D0F083"},
+{nombre:"Doris Gutiérrez", partido:"LIBRE", color:"#e53e3e", img:"https://upload.wikimedia.org/wikipedia/commons/c/c5/Doris_Guti%C3%A9rrez_2022_%28cropped%29.jpg"},
+{nombre:"Tito Asfura", partido:"PNH", color:"#3182ce", img:"https://confidencialhn.com/wp-content/uploads/2024/12/IMG_6370.jpeg"},
+{nombre:"Carmen Rivas", partido:"PNH", color:"#3182ce", img:"https://pbs.twimg.com/media/EdJK9c8WAAEoqY8.jpg"}
+];
+
+// Variables
+let elecciones = { presidente:null, diputado:null, alcalde:null };
+let departamento = "";
+
+// Render candidatos
+function renderCandidatos(candidatos, contId){
+const cont = document.getElementById(contId);
+candidatos.forEach((c,i)=>{
+const card = document.createElement("div");
+card.className = "candidate-card";
+card.style.background=c.color;
+card.innerHTML=`<img src="${c.img}" alt="${c.nombre}"><strong>${c.nombre}</strong><br>${c.partido}`;
+card.onclick=()=>{selectCandidate(contId,i);}
+cont.appendChild(card);
+});
+}
+
+function selectCandidate(seccion,index){
+const cont = document.getElementById(seccion);
+Array.from(cont.children).forEach(c=>c.classList.remove("selected"));
+cont.children[index].classList.add("selected");
+if(seccion=="presidentialCandidates") elecciones.presidente=presidentes[index].nombre;
+else if(seccion=="congressCandidates") elecciones.diputado=diputados[index].nombre;
+else elecciones.alcalde=alcaldes[index].nombre;
+actualizarResumen();
+}
+
+function actualizarResumen(){
+const sum = document.getElementById("summaryContent");
+sum.innerHTML=`<p><strong>Departamento:</strong> ${departamento || "--"}</p>
+<p><strong>Presidente:</strong> ${elecciones.presidente || "--"}</p>
+<p><strong>Diputado:</strong> ${elecciones.diputado || "--"}</p>
+<p><strong>Alcalde:</strong> ${elecciones.alcalde || "--"}</p>`;
+document.getElementById("submitVote").disabled = !(elecciones.presidente && elecciones.diputado && elecciones.alcalde && departamento);
+}
+
+// Enviar voto
+function submitVote(){
+const votos = JSON.parse(localStorage.getItem("votos"))||[];
+votos.push({departamento,...elecciones});
+localStorage.setItem("votos",JSON.stringify(votos));
+openModal('resultModal');
+}
+
+function logout(){ window.location.href="index.html"; }
+function verResultados(){ window.location.href="resultado.html"; }
+function openModal(id){ document.getElementById(id).style.display="block"; }
+function closeModal(id){ document.getElementById(id).style.display="none"; }
+
+// Render mapa con círculos grandes y clicables
+function renderMapa(){
+const svg = document.getElementById("mapaHonduras");
+departamentos.forEach(dep=>{
+const circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
+const [x,y] = dep.coords.split(",").map(Number);
+circle.setAttribute("cx",x);
+circle.setAttribute("cy",y);
+circle.setAttribute("r",55); // más grande
+circle.setAttribute("class","departamento");
+circle.addEventListener("click",()=>{
+document.querySelectorAll(".departamento").forEach(d=>d.classList.remove("seleccionado"));
+circle.classList.add("seleccionado");
+departamento=dep.nombre;
+document.getElementById("departmentSelect").value=dep.nombre;
+actualizarResumen();
+});
+svg.appendChild(circle);
+
+// Texto visible
+const text = document.createElementNS("http://www.w3.org/2000/svg","text");
+text.setAttribute("x",x);
+text.setAttribute("y",y+5);
+text.setAttribute("class","departamento-text");
+text.textContent=dep.nombre;
+svg.appendChild(text);
+});
+}
+
+// Llenar select
+const selectDep = document.getElementById("departmentSelect");
+departamentos.forEach(d=>{
+const o=document.createElement("option");
+o.value=d.nombre; o.innerText=d.nombre;
+selectDep.appendChild(o);
+});
+selectDep.addEventListener("change",()=>{
+departamento=selectDep.value;
+document.querySelectorAll(".departamento").forEach(d=>d.classList.remove("seleccionado"));
+actualizarResumen();
+});
+
+// Inicializar
+renderCandidatos(presidentes,"presidentialCandidates");
+renderCandidatos(diputados,"congressCandidates");
+renderCandidatos(alcaldes,"mayorCandidates");
+renderMapa();
+actualizarResumen();
+</script>
+</body>
+</html>
