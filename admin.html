@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Administrador 2025</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body { font-family: Arial, sans-serif; background: #e6f2ff; }
+h2 { text-align: center; color: #001a33; }
+.container { width: 90%; margin: auto; }
+canvas { margin: 20px 0; }
+</style>
+</head>
+<body>
+<h2>Panel Administrador - Sistema Electoral 2025</h2>
+
+<div class="container">
+    <h3>Estadísticas por Departamento</h3>
+    <canvas id="grafica"></canvas>
+
+    <h3>Ranking de Partidos por Departamento</h3>
+    <div id="ranking"></div>
+</div>
+
+<script>
+async function cargarEstadisticas() {
+    const res = await fetch('/estadisticas');
+    const datos = await res.json();
+
+    const departamentos = [...new Set(datos.map(d => d.departamento))];
+    const partidos = [...new Set(datos.map(d => d.partido))];
+    const colores = { 'LIBRE':'#e53e3e', 'PN':'#1a73e8', 'PLH':'#fbbc05', 'Otros':'#34a853' };
+
+    const datasets = partidos.map(p => ({
+        label: p,
+        data: departamentos.map(dep => {
+            const item = datos.find(d => d.departamento === dep && d.partido === p);
+            return item ? item.votos : 0;
+        }),
+        backgroundColor: colores[p] || '#888'
+    }));
+
+    const ctx = document.getElementById('grafica').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: { labels: departamentos, datasets: datasets },
+        options: { responsive:true, plugins: { legend: { position: 'top' } } }
+    });
+
+    // Ranking por departamento
+    const rankingDiv = document.getElementById('ranking');
+    departamentos.forEach(dep => {
+        const votosDep = datos.filter(d => d.departamento === dep);
+        votosDep.sort((a,b) => b.votos - a.votos);
+        const top = votosDep[0];
+        rankingDiv.innerHTML += `<p><b>${dep}:</b> ${top.partido} (${top.votos} votos)</p>`;
+    });
+}
+
+cargarEstadisticas();
+setInterval(cargarEstadisticas, 5000); // Actualiza cada 5s
+</script>
+</body>
+</html>

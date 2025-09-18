@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resultados Honduras 2025</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #1e3c72, #2a5298); color: #fff; margin:0; padding:0; }
+.container { max-width: 1000px; margin: 2rem auto; padding: 1rem; background: rgba(0,0,0,0.6); border-radius: 12px; }
+h1 { text-align: center; margin-bottom: 2rem; }
+.chart-container { width: 100%; margin: 2rem auto; text-align: center; }
+canvas { max-width: 600px; margin: 0 auto; background: #000000; border-radius: 12px; }
+.result { display: flex; justify-content: space-between; margin: 0.5rem 0; font-size: 1.1rem; padding:0.3rem 0.5rem; border-bottom:1px solid rgba(255,255,255,0.2);}
+.result span:first-child { font-weight:bold; }
+button { padding:0.6rem 1.2rem; border-radius:6px; border:none; cursor:pointer; background:#2b6cb0; color:#fff; font-weight:600; }
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>Resultados en Tiempo Real</h1>
+
+    <div class="chart-container">
+        <h2>Presidentes</h2>
+        <canvas id="graficoPresidentes"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>Diputados</h2>
+        <canvas id="graficoDiputados"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>Alcaldes</h2>
+        <canvas id="graficoAlcaldes"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>Ranking General</h2>
+        <div id="ranking"></div>
+    </div>
+
+    <div style="text-align:center; margin-top:2rem;">
+        <button onclick="volver()"><i class="fas fa-arrow-left"></i> Volver</button>
+    </div>
+</div>
+
+<script>
+// Datos de candidatos completos
+const presidentes = [
+    {nombre:"Xiomara Castro", partido:"LIBRE", color:"#e53e3e"},
+    {nombre:"Salvador Nasralla", partido:"PNH", color:"#3182ce"},
+    {nombre:"Nasry Asfura", partido:"PNH", color:"#3182ce"}
+];
+
+const diputados = [
+    {nombre:"Rixi Moncada", partido:"LIBRE", color:"#e53e3e"},
+    {nombre:"Gladys Aurora López", partido:"LIBRE", color:"#e53e3e"},
+    {nombre:"Samuel Reyes", partido:"PNH", color:"#3182ce"},
+    {nombre:"María Fernanda Flores", partido:"PNH", color:"#3182ce"}
+];
+
+const alcaldes = [
+    {nombre:"Luis Redondo", partido:"LIBRE", color:"#e53e3e"},
+    {nombre:"Doris Gutiérrez", partido:"LIBRE", color:"#e53e3e"},
+    {nombre:"Tito Asfura", partido:"PNH", color:"#3182ce"},
+    {nombre:"Carmen Rivas", partido:"PNH", color:"#3182ce"}
+];
+
+// Votos desde localStorage
+const votos = JSON.parse(localStorage.getItem('votos')) || [];
+
+// Contar votos incluyendo candidatos con 0
+function contarVotosCompleto(candidatos, tipo){
+    const conteo = {};
+    candidatos.forEach(c => conteo[c.nombre] = 0);
+    votos.forEach(v => {
+        if(v[tipo] && conteo.hasOwnProperty(v[tipo])){
+            conteo[v[tipo]]++;
+        }
+    });
+    return conteo;
+}
+
+// Generar datos para Chart.js
+function generarDatos(candidatos, conteo){
+    const labels = candidatos.map(c => c.nombre);
+    const data = labels.map(l => conteo[l] || 0);
+    const backgroundColor = candidatos.map(c => c.color);
+    const maxVotos = Math.max(...data);
+    const borderWidth = data.map(v => v === maxVotos && v>0 ? 4 : 2);
+    const offset = data.map(v => v === maxVotos && v>0 ? 20 : 0);
+    return { labels, data, backgroundColor, borderWidth, offset };
+}
+
+// Crear gráfico con nombres fuera para evitar sobreposición
+function crearGrafico(id, candidatos, conteo){
+    const ctx = document.getElementById(id).getContext('2d');
+    const chartData = generarDatos(candidatos, conteo);
+    new Chart(ctx, {
+        type:'pie',
+        data:{
+            labels: chartData.labels,
+            datasets:[{
+                data: chartData.data,
+                backgroundColor: chartData.backgroundColor,
+                borderColor:'#fff',
+                borderWidth: 3,  // líneas más gruesas entre secciones
+                offset: chartData.offset
+            }]
+        },
+        options:{
+            responsive:true,
+            plugins:{
+                legend:{ position:'bottom', labels:{ color:'#fff', font:{size:14} } },
+                tooltip:{
+                    callbacks:{
+                        label:function(tooltipItem){
+                            const value = tooltipItem.raw;
+                            const total = tooltipItem.chart.data.datasets[0].data.reduce((a,b)=>a+b,0);
+                            const porcentaje = total>0 ? ((value/total)*100).toFixed(2) : 0;
+                            return `${tooltipItem.label}: ${value} votos (${porcentaje}%)`;
+                        }
+                    }
+                },
+                datalabels:{
+                    color:'#fff',
+                    font:{weight:'bold', size:12},
+                    align:'end',
+                    anchor:'end',
+                    formatter: (value, context) => context.chart.data.labels[context.dataIndex]
+                }
+            }
+        },
+        plugins:[ChartDataLabels]
+    });
+}
+
+// Mostrar ranking general
+function mostrarRanking(){
+    const rankingDiv = document.getElementById('ranking');
+    const ranking = {};
+    [...presidentes,...diputados,...alcaldes].forEach(c => ranking[c.nombre]=0);
+    votos.forEach(v=>{
+        Object.keys(v).forEach(tipo=>{
+            if(ranking.hasOwnProperty(v[tipo])) ranking[v[tipo]]++;
+        });
+    });
+    const sorted = Object.entries(ranking).sort((a,b)=>b[1]-a[1]);
+    rankingDiv.innerHTML = '';
+    sorted.forEach(([nombre,votos], i)=>{
+        rankingDiv.innerHTML += `<div class="result"><span>${i+1}. ${nombre}</span><span>${votos} votos</span></div>`;
+    });
+}
+
+// Ejecutar
+const conteoPres = contarVotosCompleto(presidentes,'presidente');
+const conteoDip = contarVotosCompleto(diputados,'diputado');
+const conteoAlc = contarVotosCompleto(alcaldes,'alcalde');
+
+crearGrafico('graficoPresidentes', presidentes, conteoPres);
+crearGrafico('graficoDiputados', diputados, conteoDip);
+crearGrafico('graficoAlcaldes', alcaldes, conteoAlc);
+mostrarRanking();
+
+// Función volver
+function volver(){ window.location.href='index.html'; }
+</script>
+</body>
+</html>

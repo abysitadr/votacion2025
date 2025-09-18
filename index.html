@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Votación Honduras 2025</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        background: linear-gradient(to right, #1a202c, #2d3748);
+        color: #edf2f7;
+    }
+    .container { max-width: 1200px; margin: auto; padding: 20px; }
+    .header { display: flex; justify-content: space-between; align-items: center;
+        padding: 10px 20px; background: #2b6cb0; border-radius: 10px; }
+    .logo h1 { margin: 0; font-size: 1.5rem; display: inline-block; margin-left: 10px; }
+    .btn { padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; }
+    .btn-primary { background: #2b6cb0; color: #fff; }
+    .btn-secondary { background: #718096; color: #fff; }
+    .btn-logout { background: #e53e3e; color: #fff; }
+
+    .welcome-section { text-align: center; margin-top: 50px; }
+    .access-options { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 30px; }
+    .access-card { background: #1a202c; padding: 20px; border-radius: 12px; width: 250px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    .access-card i { font-size: 2rem; margin-bottom: 10px; }
+    .modal { display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background: rgba(0,0,0,0.7); }
+    .modal-content { background: #2d3748; margin: 15% auto; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; position: relative; }
+    .close { position: absolute; top: 10px; right: 15px; font-size: 1.5rem; cursor: pointer; }
+    .form-group { margin-bottom: 15px; text-align: left; }
+    .form-group label { display: block; margin-bottom: 5px; }
+    .form-group input { width: 100%; padding: 8px; border-radius: 6px; border: none; }
+
+    /* Mensaje flotante */
+    .mensaje-flotante {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: #2d3748;
+        color: #fff;
+        padding: 1.2rem 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        font-size: 1.2rem;
+        font-weight: 600;
+        z-index: 10000;
+        text-align: center;
+        display: none;
+    }
+    @keyframes fadeInOut {
+        0% {opacity: 0;}
+        10% {opacity: 1;}
+        90% {opacity: 1;}
+        100% {opacity: 0;}
+    }
+    footer { text-align: center; margin-top: 50px; font-size: 0.9rem; color: #a0aec0; }
+</style>
+</head>
+<body>
+<div class="container">
+    <header class="header">
+        <div class="logo">
+            <i class="fas fa-vote-yea"></i>
+            <h1>Sistema de Votación Honduras 2025</h1>
+        </div>
+        <div id="userSession" style="display: none;">
+            <span id="welcomeUser"></span>
+            <button onclick="logout()" class="btn btn-logout">
+                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <div id="guestSection" class="welcome-section">
+            <h2>Elecciones Generales Honduras 2025</h2>
+            <p>Sistema oficial de votación electrónica para ciudadanos hondureños mayores de edad</p>
+            
+            <div class="access-options">
+                <div class="access-card">
+                    <i class="fas fa-user-circle"></i>
+                    <h3>Acceso al Sistema</h3>
+                    <p>Ingresa con tu número de identidad hondureña</p>
+                    <button onclick="showLogin()" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt"></i> Ingresar al Sistema
+                    </button>
+                </div>
+                
+                <div class="access-card">
+                    <i class="fas fa-chart-bar"></i>
+                    <h3>Resultados en Vivo</h3>
+                    <p>Consulta los resultados preliminares</p>
+                    <button onclick="showResults()" class="btn btn-secondary">
+                        <i class="fas fa-poll"></i> Ver Resultados
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="authenticatedSection" class="welcome-section" style="display:none;">
+            <h2>Bienvenido al Sistema Electoral</h2>
+            <p id="userWelcomeMessage"></p>
+            <button class="btn btn-primary" onclick="goToVoting()"><i class="fas fa-ballot-check"></i> Ir a Votar</button>
+            <button class="btn btn-secondary" onclick="showResults()"><i class="fas fa-poll"></i> Ver Resultados</button>
+        </div>
+    </main>
+
+    <!-- Modal Login -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('loginModal')">&times;</span>
+            <h2><i class="fas fa-id-card"></i> Acceso al Sistema de Votación</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="identidad">Número de Identidad:</label>
+                    <input type="text" id="identidad" placeholder="0000-0000-00000" maxlength="15" required>
+                </div>
+                <div class="form-group">
+                    <label for="nombre">Nombre Completo:</label>
+                    <input type="text" id="nombre" required>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Verificar Identidad</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="mensajeFlotante" class="mensaje-flotante"></div>
+
+    <footer>
+        <p>&copy; 2025 Tribunal Supremo Electoral de Honduras - Sistema Oficial de Votación</p>
+    </footer>
+</div>
+
+<script>
+function showLogin() { document.getElementById('loginModal').style.display = 'block'; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function logout() {
+    localStorage.removeItem('usuario_id');
+    document.getElementById('guestSection').style.display = 'block';
+    document.getElementById('authenticatedSection').style.display = 'none';
+}
+function goToVoting() { window.location.href = 'votacion.html'; }
+function showResults() { window.location.href = 'resultado.html'; }
+
+function mostrarMensaje(mensaje) {
+    const div = document.getElementById('mensajeFlotante');
+    div.innerText = mensaje;
+    div.style.display = 'block';
+    div.style.animation = 'fadeInOut 3s forwards';
+    setTimeout(() => { div.style.display = 'none'; }, 3000);
+}
+
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const identidad = document.getElementById('identidad').value.trim();
+    const nombre = document.getElementById('nombre').value.trim();
+    const regexIdentidad = /^\d{4}-\d{4}-\d{5}$/;
+    if(!regexIdentidad.test(identidad)) { mostrarMensaje('Número de identidad inválido'); return; }
+
+    const añoNacimiento = parseInt(identidad.substring(5,9));
+    if(añoNacimiento >= 2008) { mostrarMensaje('No puedes votar, eres menor de edad'); return; }
+
+    const usuarios = JSON.parse(localStorage.getItem('usuarios')) || [];
+    if(usuarios.includes(identidad)) { mostrarMensaje('Este número de identidad ya ha votado'); return; }
+
+    // Guardar usuario exacto
+    usuarios.push(identidad);
+    localStorage.setItem('usuarios', JSON.stringify(usuarios));
+    localStorage.setItem('usuario_id', identidad);
+
+    // Asignar departamento (ejemplo simple)
+    const ultimos5 = parseInt(identidad.slice(-5));
+    let departamento = '';
+    if(ultimos5 <= 20000) departamento = 'Francisco Morazán';
+    else if(ultimos5 <= 40000) departamento = 'Cortés';
+    else if(ultimos5 <= 60000) departamento = 'Atlántida';
+    else departamento = 'Otros';
+    localStorage.setItem('departamento', departamento);
+
+    document.getElementById('guestSection').style.display = 'none';
+    document.getElementById('authenticatedSection').style.display = 'block';
+    document.getElementById('userWelcomeMessage').innerText = `¡Hola ${nombre}! Tu departamento: ${departamento}`;
+    mostrarMensaje('¡Ingreso exitoso! Bienvenido ' + nombre);
+
+    closeModal('loginModal');
+});
+</script>
+<script src="https://unpkg.com/sql.js@1.6.2/dist/sql-wasm.js"></script>
+<script src="db.js"></script>
+
+</body>
+</html>
